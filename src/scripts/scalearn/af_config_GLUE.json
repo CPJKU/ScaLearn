@@ -1,0 +1,10 @@
+{
+    "rte": "/share/rk3/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/rte/roberta-base/0",
+    "mrpc": "/share/rk3/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/mrpc/roberta-base/0",
+    "cola": "/share/rk3/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/cola/roberta-base/0",
+    "mnli": "/share/rk3/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/mnli/roberta-base/0",
+    "qnli": "/share/rk3/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/qnli/roberta-base/0",
+    "qqp": "/share/rk3/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/qqp/roberta-base/0",
+    "sst2": "/share/rk3/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/sst2/roberta-base/0",
+    "stsb": "/share/rk3/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/stsb/roberta-base/0"
+}

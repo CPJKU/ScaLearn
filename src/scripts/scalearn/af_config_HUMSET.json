@@ -1,0 +1,7 @@
+{
+    "sectors": "/share/rk5/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/sectors/xlm-roberta-base/0",
+    "pillars_1d": "/share/rk5/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/pillars_1d/xlm-roberta-base/0",
+    "pillars_2d": "/share/rk5/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/pillars_2d/xlm-roberta-base/0",
+    "subpillars_1d": "/share/rk5/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/subpillars_1d/xlm-roberta-base/0",
+    "subpillars_2d": "/share/rk5/home/markus-frohmann/ScaLearn/src/runs/st-a-3e-4/subpillars_2d/xlm-roberta-base/0"
+}
