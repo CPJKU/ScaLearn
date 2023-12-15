@@ -177,7 +177,7 @@ def main() -> None:
         train_fn(trainer, training_args, last_checkpoint)
 
     # save adapter
-    if fusion_args.train_fusion:
+    if fusion_args.train_fusion and not fusion_args.fusion_type == "soup":
         # train_fusion applies both for ScaLearn and AdapterFusion!
         logger.info("Saving Two-Stage MTL.")
 

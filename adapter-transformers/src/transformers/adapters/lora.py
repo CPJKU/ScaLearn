@@ -29,7 +29,6 @@ class LoRA(nn.Module):
         self.lora_alpha = config.alpha
         self.composition_mode = config.composition_mode
         self.attn_matrices = config.attn_matrices
-        self.share_adapter = config.share_adapter
         self.use_gating = config.use_gating
         # Optional dropout
         if config.dropout > 0.0:
@@ -102,7 +101,6 @@ class LoRALayer(AdapterLayerBase):
         self.location_key = location_key + "_lora"
         self.config = config
         self.loras = nn.ModuleDict(dict())
-        self.adapters_mask = nn.ModuleDict(dict())
 
         self.merged = False
 
@@ -143,19 +141,7 @@ class LoRALayer(AdapterLayerBase):
         shared_adapter=None,
         tasks=None,
     ):
-        status = self.add_adapter(adapter_name, layer_idx)
-        if not status:
-            return False
-        # define mask
-        mask = LoraSubnet(
-            self.loras[adapter_name].lora_A.size(),
-            self.loras[adapter_name].lora_B.size(),
-            sparsity,
-        )
-
-        self.adapters_mask[adapter_name] = mask
-
-        return True
+        pass
 
     def delete_adapter(self, adapter_name: str):
         if adapter_name in self.loras:
@@ -181,9 +167,6 @@ class LoRALayer(AdapterLayerBase):
             for name in adapter_setup.flatten():
                 if name in self.loras:
                     for param in self.loras[name].parameters():
-                        param.requires_grad = True
-                if name in self.adapters_mask:
-                    for param in self.adapters_mask[name].parameters():
                         param.requires_grad = True
 
     def get_adapter(self, adapter_name: str) -> nn.Module:
@@ -291,23 +274,10 @@ class Linear(LoRALayer, nn.Linear):
                     # result shape: <batch_size> x <seq_len> x <head_dim>
                     result = F.linear(x, T(self.weight), bias=self.bias)
                     if lora.r > 0:
-                        if lora.share_adapter:
-                            lora_A_mask, lora_B_mask = self.adapters_mask[
-                                adapter_setup[0]
-                            ]()
-                            lora_A_mat = lora.lora_A * lora_A_mask
-                            lora_B_mat = lora.lora_B * lora_B_mask
-                        else:
-                            lora_B_mat = lora.lora_B
-                            lora_A_mat = lora.lora_A
                         if lora.composition_mode == "scale":
-                            delta_w = lora.lora_B_mat.view(1, 1, -1)
+                            delta_w = lora.lora_B.view(1, 1, -1)
                         else:
-                            delta_w = (
-                                lora.lora_dropout(x)
-                                @ torch.t(lora.lora_A_mat)
-                                @ torch.t(lora.lora_B_mat)
-                            )
+                            delta_w = lora.lora_dropout(x) @ torch.t(lora.lora_A) @ torch.t(lora.lora_B)
                         if lora.use_gating:
                             gate = torch.sigmoid(lora.gate(x))
                             gate = torch.mean(gate, dim=1).unsqueeze(-1)
@@ -317,9 +287,7 @@ class Linear(LoRALayer, nn.Linear):
                         result = lora.com(result, delta_w, scaling=gate)
                     return result
                 else:
-                    raise ValueError(
-                        f"Invalid adapter setup. Cannot use {adapter_setup} with LoRA."
-                    )
+                    raise ValueError(f"Invalid adapter setup. Cannot use {adapter_setup} with LoRA.")
 
         return F.linear(x, T(self.weight), bias=self.bias)
 

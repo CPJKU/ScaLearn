@@ -472,6 +472,7 @@ class IA3Config(LoRAConfig):
     composition_mode: str = "scale"
     init_weights: str = "ia3"
     use_gating: bool = False
+    share_adapter: bool = False
 
 
 class ConfigUnion(AdapterConfigBase):

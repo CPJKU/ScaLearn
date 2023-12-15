@@ -306,6 +306,15 @@ class FusionArguments:
     learn_omega: bool = field(
         default=False, metadata={"help": "Whether to learn omega or not."}
     )
+    soup_topK: int = field(
+        default=5, metadata={"help": "Topk to use for AdapterSoup."}
+    )
+    soup_include_target: bool = field(
+        default=False, metadata={"help": "Whether to include target task addapter in AdapterSoup."}
+    )
+    soup_sim_file: str = field(
+        default=None, metadata={"help": "Path to SentSim file for AdapterSoup."}
+    )
 
 
 @dataclass

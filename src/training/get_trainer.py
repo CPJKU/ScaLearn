@@ -93,11 +93,6 @@ def get_trainer(args):
     adapter_setup = None
     # ScaLearn + AdapterFusion
     if fusion_args.train_fusion:
-        if adapter_args.train_adapter:
-            raise ValueError(
-                "Fusion training is currently not supported in adapter training mode."
-                "Set --train_adapter to False to enable fusion training"
-            )
         af_config = json.load(open(fusion_args.fusion_load_dir))
 
         # ScaLearn only: set data_args.task_name as first task
@@ -150,17 +145,88 @@ def get_trainer(args):
                 af_config[task] = af_config[task][:-1] + "100" + "/" + seed
 
         logger.info(af_config)
-        for _, adapter_dir in af_config.items():
-            logger.info(adapter_dir)
-            model.load_adapter(
-                adapter_dir,
-                config=adapter_config,
-                with_head=fusion_args.fusion_with_head,
-            )
-        adapter_setup = [list(af_config.keys())]
+        if not fusion_args.fusion_type == "soup":
+            for _, adapter_dir in af_config.items():
+                adapter_config.sparsity = model_args.sparsity
+                logger.info(adapter_dir)
+                model.load_adapter(
+                    adapter_dir,
+                    config=adapter_config,
+                    with_head=fusion_args.fusion_with_head,
+                )
+            adapter_setup = [list(af_config.keys())]
 
+        # SOUP
+        if fusion_args.fusion_type == "soup":
+            logger.info("*** Applying weight space averaging of the adapters ***")
+            print("*** Applying weight space averaging of the adapters ***")
+            state_dicts = {}
+            with open(fusion_args.soup_sim_file) as f:
+                all_weight_dict = json.load(f) 
+            weight_dict = all_weight_dict[data_args.task_name]
+            print("*** Weight vector ***")
+            print(weight_dict)
+            if not fusion_args.soup_include_target:
+                weight_dict.pop(data_args.task_name)
+            # sort and select topK most similar adapters
+            weight_dict = {
+                k: v
+                for k, v in sorted(
+                    weight_dict.items(), key=lambda item: item[1], reverse=True
+                )[:fusion_args.soup_topK]
+            }
+            logger.info(weight_dict)
+            print("*** Weight vector after topK selection ***")
+            print(weight_dict)
+            # normalize: sum of weights = 1
+            weight_dict = {
+                k: v / sum(weight_dict.values()) for k, v in weight_dict.items()
+            }
+            logger.info(weight_dict)
+            print("*** Weight vector after normalization ***")
+            print(weight_dict)
+            for task, _ in weight_dict.items():
+                current_adapter_dir = af_config[task]
+                print(task, current_adapter_dir)
+                model.load_adapter(
+                    current_adapter_dir,
+                    config=adapter_config,
+                    load_as="adapter",
+                    with_head=False,
+                )
+                model.set_active_adapters("adapter")
+                state_dicts[task] = model.state_dict()
+
+                # Deactivate all adapters
+                model.set_active_adapters(None)
+                # Delete the added adapter
+                model.delete_adapter("adapter")
+            
+            print("*** Adapters are weighted according to the weight vector ***")
+            new_state_dict = list(state_dicts.values())[0].copy()
+            for key in new_state_dict:
+                sum_state_dicts_of_key = 0
+                if "adapter" in key:
+                    print(key)
+                    for i in state_dicts.keys():
+                        sum_state_dicts_of_key += (state_dicts[i][key] * weight_dict[i])
+                        print(i, weight_dict[i])
+                    new_state_dict[key] = sum_state_dicts_of_key
+            
+            model.load_adapter(
+                af_config[data_args.task_name],
+                config=adapter_config,
+                with_head=False,
+                load_as="adapter",
+            )
+            model.load_state_dict(new_state_dict)
+            model.train_adapter(
+                "adapter",
+            )
+            model.freeze_model(True)   
+                    
         # Add a fusion layer and tell the model to train a transfer layer
-        if mtl_2_args.scalearn_type:
+        elif mtl_2_args.scalearn_type:
             model.add_scalearn(adapter_setup[0], fusion_args.fusion_type)
             model.train_transfer_layer(
                 adapter_setup, unfreeze_adapters=fusion_args.fusion_unfreeze_adapters
